@@ -21,6 +21,12 @@ password = os.getenv("IG_PSSD")
 print(f"Username: {username}")
 print(f"Password: {password}")
 
+# Funciones de default
+def format_to_international(value):
+    number = int(float(value) * 1000)
+    return number
+
+
 # Ruta relativa basada en el directorio actual del script
 driver_path = os.path.join(os.path.dirname(__file__), "drivers", "msedgedriver.exe")
 
@@ -50,14 +56,68 @@ def login_to_instagram():
         password_input.send_keys(password)
         login_button = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
         login_button.click()
+        time.sleep(5)
     except Exception as e:
-        print(f"Failed to load Instagram: {e}")
+        print(f"Failed to load Instagram: {e}") 
         driver.quit()
         raise
 
     return driver
 
+def get_followers(driver, username):
+    print(f"Getting followers of {username}...")
+    driver.get(f"https://www.instagram.com/{username}/")
+    time.sleep(5)  # Dar tiempo a la página para cargar
+
+    try:
+        # Buscar el enlace de "Seguidores" y extraer el número de seguidores
+        followers_link = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, f"a[href='/{username}/followers/'] span[title]"))
+        )
+        followers_count = followers_link.get_attribute("title")
+        print(f"{username} tiene {followers_count}")
+        followers_count = format_to_international(followers_count)
+        print(f"{username} tiene {followers_count} seguidores")
+        followers_link.click()
+        time.sleep(3)
+
+        followers_xpath = '/html/body/div[6]/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[2]/div/div/div[3]'
+        follow_count = '_ap3a._aaco._aacw._aacx._aad7._aade'
+
+        follows = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, followers_xpath))
+        )
+
+        # Scroll to the end of the followers list
+        hour = datetime.now()
+        diff_hour = datetime.now() - hour
+        seconds_scroll = diff_hour.total_seconds()
+        fol_find = 0
+
+        while followers_count > fol_find and seconds_scroll < 60:
+            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", follows)
+            time.sleep(1)
+            fol_find = len(follows.find_elements(By.CLASS_NAME, follow_count))
+            diff_hour = datetime.now() - hour
+            seconds_scroll = diff_hour.total_seconds()
+
+        my_followers = driver.find_elements(By.CLASS_NAME, follow_count)
+        print(f"Found {len(my_followers)} followers")
+
+        seguidores = []
+        for seguidor in my_followers:
+            seguidores.append(seguidor.text)
+
+        return seguidores
+    
+    except Exception as e:
+        print(f"Error finding followers count: {e}")
+        driver.quit()
+        raise
+
+
 if __name__ == "__main__":
     driver = login_to_instagram()
+    get_followers(driver, "mechslol")
     input("Press Enter to close the browser...")
     
