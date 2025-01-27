@@ -23,6 +23,8 @@ print(f"Password: {password}")
 
 # Funciones de default
 def format_to_international(value):
+    if value == '': return 0
+
     number = int(float(value) * 1000)
     return number
 
@@ -81,7 +83,7 @@ def get_followers(driver, username):
         followers_link.click()
         time.sleep(3)
 
-        followers_xpath = '/html/body/div[6]/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[2]/div/div/div[3]'
+        followers_xpath = '/html/body/div[5]/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[2]/div/div/div[3]'
         follow_count = '_ap3a._aaco._aacw._aacx._aad7._aade'
 
         follows = WebDriverWait(driver, 10).until(
@@ -115,9 +117,74 @@ def get_followers(driver, username):
         driver.quit()
         raise
 
+def get_following(driver, username):
+    print(f"Getting following of {username}...")
+    # driver.get(f"https://www.instagram.com/{username}/")
+    time.sleep(5)  # Dar tiempo a la página para cargar
+
+    try:
+        # Buscar el enlace de "Seguidores" y extraer el número de seguidores
+        followers_link = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, f"a[href='/{username}/following/'] span"))
+        )
+        followers_count = followers_link.get_attribute("title")
+        print(f"{username} tiene {followers_count}")
+        followers_count = format_to_international(followers_count)
+        print(f"{username} tiene {followers_count} siguiendo")
+        followers_link.click()
+        time.sleep(3)
+
+        followers_xpath = "//div[@role='dialog']//ul"
+        follow_count = '_ap3a._aaco._aacw._aacx._aad7._aade'
+
+        follows = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, followers_xpath))
+        )
+
+        # Scroll to the end of the followers list
+        hour = datetime.now()
+        diff_hour = datetime.now() - hour
+        seconds_scroll = diff_hour.total_seconds()
+        fol_find = 0
+
+        while followers_count > fol_find and seconds_scroll < 60:
+            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", follows)
+            time.sleep(1)
+            fol_find = len(follows.find_elements(By.CLASS_NAME, follow_count))
+            diff_hour = datetime.now() - hour
+            seconds_scroll = diff_hour.total_seconds()
+
+        my_followers = driver.find_elements(By.CLASS_NAME, follow_count)
+        print(f"Found {len(my_followers)} followers")
+
+        seguidos = []
+        for seguidor in my_followers:
+            seguidos.append(seguidor.text)
+
+        return seguidos
+    
+    except Exception as e:
+        print(f"Error finding following count: {e}")
+        driver.quit()
+        raise
+
+
+def save_to_excel(lista, column, followers=None):
+    df = pd.DataFrame(lista, columns=[column])
+
+    if column == 'Seguidos' and followers is not None:
+        df['Me sigue'] = df[column].apply(lambda x: 'Si' if x in followers else 'No')
+    
+    filename = f'{column}.xlsx'
+    df.to_excel(filename, index=False)
+    print(f"Saved to {filename}")
+    return filename
 
 if __name__ == "__main__":
     driver = login_to_instagram()
-    get_followers(driver, "mechslol")
+    followers = get_followers(driver, "xchronofox")
+    following = get_following(driver, "xchronofox")
+    excel_file = save_to_excel(followers, 'Seguidores')
+    escel_file = save_to_excel(following, 'Seguidos', followers)
     input("Press Enter to close the browser...")
     
