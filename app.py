@@ -119,13 +119,13 @@ def get_followers(driver, username):
 
 def get_following(driver, username):
     print(f"Getting following of {username}...")
-    # driver.get(f"https://www.instagram.com/{username}/")
+    driver.get(f"https://www.instagram.com/{username}/")
     time.sleep(5)  # Dar tiempo a la página para cargar
 
     try:
         # Buscar el enlace de "Seguidores" y extraer el número de seguidores
         followers_link = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, f"a[href='/{username}/following/'] span"))
+            EC.presence_of_element_located((By.CSS_SELECTOR, f"a[href='/{username}/following/']"))
         )
         followers_count = followers_link.get_attribute("title")
         print(f"{username} tiene {followers_count}")
@@ -134,7 +134,7 @@ def get_following(driver, username):
         followers_link.click()
         time.sleep(3)
 
-        followers_xpath = "//div[@role='dialog']//ul"
+        followers_xpath = "/html/body/div[5]/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[2]/div/div/div[3]"
         follow_count = '_ap3a._aaco._aacw._aacx._aad7._aade'
 
         follows = WebDriverWait(driver, 10).until(
